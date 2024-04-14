@@ -103,6 +103,9 @@ class SSH(MountControl):
         self.host = None
         self.port = None
         self.cipher = None
+        self.proxy_user = None
+        self.proxy_host = None
+        self.proxy_port = None
         self.nice = None
         self.ionice = None
         self.nocache = None
@@ -122,6 +125,13 @@ class SSH(MountControl):
         self.setattrKwargs(
             'private_key_file',
             self.config.sshPrivateKeyFile(self.profile_id), **kwargs)
+
+        self.setattrKwargs(
+            'proxy_user', self.config.sshProxyUser(self.profile_id), **kwargs)
+        self.setattrKwargs(
+            'proxy_host', self.config.sshProxyHost(self.profile_id), **kwargs)
+        self.setattrKwargs(
+            'proxy_port', self.config.sshProxyPort(self.profile_id), **kwargs)
         self.setattrKwargs(
             'nice',
             self.config.niceOnRemote(self.profile_id), store=False, **kwargs)
@@ -201,6 +211,13 @@ class SSH(MountControl):
                      % ' '.join(sshfs),
                      self)
 
+        if self.proxy_host:
+            sshfs.extend([
+                '-o',
+                f'ssh_command=ssh -J {self.proxy_user}@{self.proxy_host}:{self.proxy_port}'
+            ])
+
+        logger.debug(f"Run SSHFS command {' '.join(sshfs)}")
         proc = subprocess.Popen(sshfs,
                                 env=env,
                                 stdout=subprocess.DEVNULL,
@@ -701,7 +718,7 @@ class SSH(MountControl):
 
             try:
                 with socket.create_connection(
-                        (self.host, self.port), 2.0) as s:
+                        (self.proxy_host or self.host, self.proxy_port or self.port), 2.0) as s:
 
                     result = s.connect_ex(s.getpeername())
                     s.sendall(versionString)
@@ -720,9 +737,9 @@ class SSH(MountControl):
 
         if result != 0:
             logger.debug('Failed pinging host %s' % self.host, self)
-
+            proxy_message = f" via proxy {self.proxy_host}" if self.proxy_host else ""
             raise MountException(
-                f'Ping {self.host} failed. Host is down or wrong address.')
+                f'Ping {self.host}{proxy_message} failed. Host is down or wrong address.')
 
     def checkRemoteCommands(self, retry=False):
         """
@@ -1030,8 +1047,64 @@ def sshKeyGen(keyfile):
     return not proc.returncode
 
 
-def sshCopyId(pubkey, user, host, port='22',
-              askPass='backintime-askpass', cipher=None):
+def sshCopyIdCommand(
+    pubkey,
+    user,
+    host,
+    port='22',
+    proxy_user=None,
+    proxy_host=None,
+    proxy_port=None,
+    cipher=None
+):
+    """
+    Generate a ssh-copy-id command to copy the given public ssh-key to a remote host.
+
+    Args:
+        pubkey (str):   path to the public key file
+        user (str):     remote user
+        host (str):     remote host
+        port (str):     ssh port on remote host
+        proxy_user (str):     proxy host user
+        proxy_host (str):     proxy host
+        proxy_port (str):     proxy host port
+        cipher (str):   cipher used for ssh
+
+    Returns:
+        list:           list containing the ssh-copy-id command
+    """
+    if not os.path.exists(pubkey):
+        logger.warning(
+            'SSH public key "{}" does not exist. Skip copy to remote host'
+            .format(pubkey))
+
+        return False
+
+    cmd = ['ssh-copy-id', '-i', pubkey, '-p', str(port)]
+
+    if cipher and cipher != 'default':
+        cmd.extend(['-o', 'Ciphers={}'.format(cipher)])
+
+    if proxy_host:
+        cmd.extend(['-o', f'ProxyJump={proxy_user}@{proxy_host}:{proxy_port}'])
+
+    cmd.append('{}@{}'.format(user, host))
+
+    logger.debug('ssh-copy-id command "{}"'.format(' '.join(cmd)))
+    return cmd
+
+
+def sshCopyId(
+    pubkey,
+    user,
+    host,
+    port='22',
+    proxy_user=None,
+    proxy_host=None,
+    proxy_port=None,
+    askPass='backintime-askpass',
+    cipher=None
+):
     """
     Copy SSH public key ``pubkey`` to remote ``host``.
 
@@ -1046,13 +1119,16 @@ def sshCopyId(pubkey, user, host, port='22',
     Returns:
         bool:           True if successful
     """
-
-    if not os.path.exists(pubkey):
-        logger.warning(
-            'SSH public key "{}" does not exist. Skip copy to remote host'
-            .format(pubkey))
-
-        return False
+    cmd = sshCopyIdCommand(
+        pubkey,
+        user,
+        host,
+        port,
+        proxy_user,
+        proxy_host,
+        proxy_port,
+        cipher
+    )
 
     env = os.environ.copy()
     env['SSH_ASKPASS'] = askPass
@@ -1062,16 +1138,6 @@ def sshCopyId(pubkey, user, host, port='22',
             pubkey=pubkey, host=host),
         _('Please enter password for "{user}"').format(user=user)
     )
-
-    cmd = ['ssh-copy-id', '-i', pubkey, '-p', port]
-
-    if cipher and cipher != 'default':
-        cmd.extend(['-o', 'Ciphers={}'.format(cipher)])
-
-    cmd.append('{}@{}'.format(user, host))
-
-    logger.debug('Call command "{}"'.format(' '.join(cmd)))
-
     proc = subprocess.Popen(cmd, env=env,
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.PIPE,

@@ -264,6 +264,34 @@ class SettingsDialog(QDialog):
                             self.lblSshPath,
                             self.lblSshCipher)
 
+
+        self.lblProxySubtitle = QLabel(
+            "<b>{}</b>:".format(
+                _("SSH Proxy (optional)"),
+            ),
+            self
+        )
+        self.lblProxySubtitle.setWordWrap(True)
+        vlayout.addWidget(self.lblProxySubtitle)
+
+        hlayout_ssh_proxy = QHBoxLayout()
+        vlayout.addLayout(hlayout_ssh_proxy)
+        self.lblSshProxyHost = QLabel(_('Host') + ':', self)
+        hlayout_ssh_proxy.addWidget(self.lblSshProxyHost)
+        self.txtSshProxyHost = QLineEdit(self)
+        hlayout_ssh_proxy.addWidget(self.txtSshProxyHost)
+
+        self.lblSshProxyPort = QLabel(_('Port') + ':', self)
+        hlayout_ssh_proxy.addWidget(self.lblSshProxyPort)
+        self.txtSshProxyPort = QLineEdit(self)
+        hlayout_ssh_proxy.addWidget(self.txtSshProxyPort)
+
+        self.lblSshProxyUser = QLabel(_('User') + ':', self)
+        hlayout_ssh_proxy.addWidget(self.lblSshProxyUser)
+        self.txtSshProxyUser = QLineEdit(self)
+        hlayout_ssh_proxy.addWidget(self.txtSshProxyUser)
+
+
         # encfs
         self.modeLocalEncfs = self.modeLocal
         self.modeSshEncfs = self.modeSsh
@@ -1300,6 +1328,9 @@ class SettingsDialog(QDialog):
         self.txtSshHost.setText(self.config.sshHost())
         self.txtSshPort.setText(str(self.config.sshPort()))
         self.txtSshUser.setText(self.config.sshUser())
+        self.txtSshProxyHost.setText(self.config.sshProxyHost())
+        self.txtSshProxyPort.setText(str(self.config.sshProxyPort()))
+        self.txtSshProxyUser.setText(self.config.sshProxyUser())
         self.txtSshPath.setText(self.config.sshSnapshotsPath())
         self.setComboValue(self.comboSshCipher,
                            self.config.sshCipher(),
@@ -1500,6 +1531,9 @@ class SettingsDialog(QDialog):
         self.config.setSshHost(self.txtSshHost.text())
         self.config.setSshPort(self.txtSshPort.text())
         self.config.setSshUser(self.txtSshUser.text())
+        self.config.setSshProxyHost(self.txtSshProxyHost.text())
+        self.config.setSshProxyPort(self.txtSshProxyPort.text())
+        self.config.setSshProxyUser(self.txtSshProxyUser.text())
         self.config.setSshSnapshotsPath(self.txtSshPath.text())
         self.config.setSshCipher(
             self.comboSshCipher.itemData(self.comboSshCipher.currentIndex()))
@@ -1680,6 +1714,9 @@ class SettingsDialog(QDialog):
                     self.config.sshUser(),
                     self.config.sshHost(),
                     port=str(self.config.sshPort()),
+                    proxy_user=self.config.sshProxyUser(),
+                    proxy_host=self.config.sshProxyHost(),
+                    proxy_port=self.config.sshProxyPort(),
                     askPass=tools.which('backintime-askpass'),
                     cipher=self.config.sshCipher()
                 )

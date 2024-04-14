@@ -950,6 +950,9 @@ class Snapshots:
                 if not ret_error:
                     self.clearTakeSnapshotMessage()
 
+                # QUESTION - unmounting at the end of backup breaks snapshot list,
+                # why is this happening?
+
                 # unmount
                 try:
                     mount.Mount(cfg = self.config).umount(self.config.current_hash_id)

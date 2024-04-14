@@ -34,6 +34,7 @@ import sshtools
 import tools
 from exceptions import MountException
 
+
 @unittest.skipIf(not generic.LOCAL_SSH, 'Skip as this test requires a local ssh server, public and private keys installed')
 class TestSSH(generic.SSHTestCase):
     # running this test requires that user has public / private key pair created and ssh server running
@@ -396,3 +397,45 @@ class TestStartSshAgent(generic.SSHTestCase):
         mockWhich.return_value = ''
         with self.assertRaises(MountException):
             self.ssh.startSshAgent()
+
+
+class SSHCopyIDTestCase(unittest.TestCase):
+
+    def test_ssh_copy_id_command_default_port(self):
+        command = sshtools.sshCopyIdCommand(
+            generic.PRIV_KEY_FILE,
+            'user',
+            'non_existing_host',
+        )
+        self.assertEqual(
+            command,
+            ['ssh-copy-id', '-i', generic.PRIV_KEY_FILE, '-p', '22', 'user@non_existing_host']
+        )
+
+    def test_ssh_copy_id_command_custom_port(self):
+        command = sshtools.sshCopyIdCommand(
+            generic.PRIV_KEY_FILE,
+            'user',
+            'non_existing_host',
+            port='23'
+        )
+        self.assertEqual(
+            command,
+            ['ssh-copy-id', '-i', generic.PRIV_KEY_FILE, '-p', '23', 'user@non_existing_host']
+        )
+
+    def test_ssh_copy_id_command_with_proxy(self):
+        command = sshtools.sshCopyIdCommand(
+            generic.PRIV_KEY_FILE,
+            'user',
+            'non_existing_host',
+            proxy_user='non_existing_proxy_user',
+            proxy_host='non_existing_proxy_host',
+            proxy_port='24',
+        )
+        self.assertEqual(
+            command,
+            [
+                'ssh-copy-id', '-i', generic.PRIV_KEY_FILE, '-p', '22', '-o',
+                'ProxyJump=non_existing_proxy_user@non_existing_proxy_host:24', 'user@non_existing_host']
+        )

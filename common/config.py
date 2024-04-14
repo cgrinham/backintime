@@ -668,6 +668,27 @@ class Config(configfile.ConfigFileWithProfiles):
     def setSshPrivateKeyFile(self, value, profile_id = None):
         self.setProfileStrValue('snapshots.ssh.private_key_file', value, profile_id)
 
+    def sshProxyHost(self, profile_id = None):
+        #?Proxy host used to connect to remote host.;;IP or domain address
+        return self.profileStrValue('snapshots.ssh.proxy_host', '', profile_id)
+
+    def setSshProxyHost(self, value, profile_id = None):
+        self.setProfileStrValue('snapshots.ssh.proxy_host', value, profile_id)
+
+    def sshProxyPort(self, profile_id = None):
+        #?Proxy host port used to connect to remote host.;0-65535
+        return self.profileIntValue('snapshots.ssh.proxy_host_port', 22, profile_id)
+
+    def setSshProxyPort(self, value, profile_id = None):
+        self.setProfileIntValue('snapshots.ssh.proxy_host_port', value, profile_id)
+
+    def sshProxyUser(self, profile_id = None):
+        #?Remote SSH user;;local users name
+        return self.profileStrValue('snapshots.ssh.proxy_user', self.user(), profile_id)
+
+    def setSshProxyUser(self, value, profile_id = None):
+        self.setProfileStrValue('snapshots.ssh.proxy_user', value, profile_id)
+
     def sshMaxArgLength(self, profile_id = None):
         #?Maximum command length of commands run on remote host. This can be tested
         #?for all ssh profiles in the configuration
@@ -745,6 +766,13 @@ class Config(configfile.ConfigFileWithProfiles):
         assert custom_args is None or isinstance(custom_args, list), "custom_args '{}' is not list instance".format(custom_args)
         ssh  = ['ssh']
         ssh += self.sshDefaultArgs(profile_id)
+
+        if self.sshProxyHost(profile_id):
+            ssh += ['-J', '{}@{}:{}'.format(
+                self.sshProxyUser(profile_id),
+                self.sshProxyHost(profile_id),
+                self.sshProxyPort(profile_id)
+            )]
         # remote port
         if port:
             ssh += ['-p', str(self.sshPort(profile_id))]
@@ -777,6 +805,8 @@ class Config(configfile.ConfigFileWithProfiles):
         # close quote
         if quote and cmd:
             ssh.append("'")
+
+        logger.debug('SSH command: %s' % ' '.join(ssh), self)
 
         return ssh
 
