@@ -189,7 +189,7 @@ class SettingsDialog(QDialog):
         hlayout.addWidget(self.btnSnapshotsPath)
         self.btnSnapshotsPath.clicked.connect(self.btnSnapshotsPathClicked)
 
-        # SSH
+        # --- SSH ---
         groupBox = QGroupBox(self)
         self.modeSsh = groupBox
         groupBox.setTitle(_('SSH Settings'))
@@ -256,6 +256,7 @@ class SettingsDialog(QDialog):
         self.btnSshKeyGen.setMinimumSize(32, 28)
         hlayout3.addWidget(self.btnSshKeyGen)
         self.btnSshKeyGen.clicked.connect(self.btnSshKeyGenClicked)
+
         # Disable SSH key generation button if a key file is already set
         self.txtSshPrivateKeyFile.textChanged \
             .connect(lambda x: self.btnSshKeyGen.setEnabled(not x))
@@ -264,33 +265,8 @@ class SettingsDialog(QDialog):
                             self.lblSshPath,
                             self.lblSshCipher)
 
-
-        self.lblProxySubtitle = QLabel(
-            "<b>{}</b>:".format(
-                _("SSH Proxy (optional)"),
-            ),
-            self
-        )
-        self.lblProxySubtitle.setWordWrap(True)
-        vlayout.addWidget(self.lblProxySubtitle)
-
-        hlayout_ssh_proxy = QHBoxLayout()
-        vlayout.addLayout(hlayout_ssh_proxy)
-        self.lblSshProxyHost = QLabel(_('Host') + ':', self)
-        hlayout_ssh_proxy.addWidget(self.lblSshProxyHost)
-        self.txtSshProxyHost = QLineEdit(self)
-        hlayout_ssh_proxy.addWidget(self.txtSshProxyHost)
-
-        self.lblSshProxyPort = QLabel(_('Port') + ':', self)
-        hlayout_ssh_proxy.addWidget(self.lblSshProxyPort)
-        self.txtSshProxyPort = QLineEdit(self)
-        hlayout_ssh_proxy.addWidget(self.txtSshProxyPort)
-
-        self.lblSshProxyUser = QLabel(_('User') + ':', self)
-        hlayout_ssh_proxy.addWidget(self.lblSshProxyUser)
-        self.txtSshProxyUser = QLineEdit(self)
-        hlayout_ssh_proxy.addWidget(self.txtSshProxyUser)
-
+        self.wdgSshProxy = self._create_widget_ssh_proxy()
+        vlayout.addWidget(self.wdgSshProxy)
 
         # encfs
         self.modeLocalEncfs = self.modeLocal
@@ -1158,6 +1134,37 @@ class SettingsDialog(QDialog):
 
         self.finished.connect(self.cleanup)
 
+    def _create_widget_ssh_proxy(self):
+        """
+        Dev note by buhtz (2024-04): Just a quick n dirty solution until the
+        re-design and re-factoring of the whole dialog.
+        """
+        widget = QWidget(self)
+        vlayout = QVBoxLayout(widget)
+        # zero margins
+        vlayout.setContentsMargins(0, 0, 0, 0)
+
+        label = QLabel(_('SSH Proxy (optional)'), widget)
+        label.setWordWrap(True)
+        vlayout.addWidget(label)
+
+        hlayout = QHBoxLayout()
+        vlayout.addLayout(hlayout)
+
+        hlayout.addWidget(QLabel(_('Host:'), widget))
+        self.txtSshProxyHost = QLineEdit(widget)
+        hlayout.addWidget(self.txtSshProxyHost)
+
+        hlayout.addWidget(QLabel(_('Port:'), widget))
+        self.txtSshProxyPort = QLineEdit(widget)
+        hlayout.addWidget(self.txtSshProxyPort)
+
+        hlayout.addWidget(QLabel(_('User:'), widget))
+        self.txtSshProxyUser = QLineEdit(widget)
+        hlayout.addWidget(self.txtSshProxyUser)
+
+        return widget
+
     def addProfile(self):
         ret_val = QInputDialog.getText(self, _('New profile'), str())
         if not ret_val[1]:
@@ -1324,13 +1331,15 @@ class SettingsDialog(QDialog):
         self.editSnapshotsPath.setText(
             self.config.snapshotsPath(mode='local'))
 
-        # ssh
+        # SSH
         self.txtSshHost.setText(self.config.sshHost())
         self.txtSshPort.setText(str(self.config.sshPort()))
         self.txtSshUser.setText(self.config.sshUser())
         self.txtSshProxyHost.setText(self.config.sshProxyHost())
         self.txtSshProxyPort.setText(str(self.config.sshProxyPort()))
         self.txtSshProxyUser.setText(self.config.sshProxyUser())
+        print(f'{self.config.sshProxyHost()=}')
+        self.wdgSshProxy.setEnabled(self.config.sshProxyHost() != '')
         self.txtSshPath.setText(self.config.sshSnapshotsPath())
         self.setComboValue(self.comboSshCipher,
                            self.config.sshCipher(),
