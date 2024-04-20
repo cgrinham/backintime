@@ -75,6 +75,64 @@ from exceptions import MountException, NoPubKeyLogin, KnownHost
 # That value is used to wrap tooltip strings (inserting newline characters).
 _TOOLTIP_WRAP_LENGTH = 72
 
+class SshProxyWidget(QWidget):
+    """Used in SSH snapshot profiles on the General tab.
+
+    Dev note by buhtz (2024-04): Just a quick n dirty solution until the
+    re-design and re-factoring of the whole dialog.
+    """
+    def __init__(self, parent, host, port, user):
+        super().__init__(parent)
+
+        if host == '':
+            port = ''
+            user = ''
+
+        vlayout = QVBoxLayout(self)
+        # zero margins
+        vlayout.setContentsMargins(0, 0, 0, 0)
+
+        label = QLabel(_('SSH Proxy (optional)'), self)
+        label.setWordWrap(True)
+        vlayout.addWidget(label)
+
+        hlayout = QHBoxLayout()
+        vlayout.addLayout(hlayout)
+
+        hlayout.addWidget(QLabel(_('Host:'), self))
+        self.host_edit = QLineEdit(host, self)
+        hlayout.addWidget(self.host_edit)
+
+        hlayout.addWidget(QLabel(_('Port:'), self))
+        self.port_edit = QLineEdit(port, self)
+        hlayout.addWidget(self.port_edit)
+
+        hlayout.addWidget(QLabel(_('User:'), self))
+        self.user_edit = QLineEdit(user, self)
+        hlayout.addWidget(self.user_edit)
+
+        if host == '':
+            self._disable()
+
+    def _disable(self):
+        self._enable(False)
+
+    def _enable(self, enable=True):
+        lay = self.layout()
+        print(f'{lay=}')
+        print(f'{lay.count()=}')
+        pass
+
+        self.host_edit.setEnabled(enable)
+        self.port_edit.setEnabled(enable)
+        self.user_edit.setEnabled(enable)
+
+    def values(self):
+        return {
+            'host': self.host_edit.text(),
+            'port': self.port_edit.text(),
+            'user': self.user_edit.text(),
+        }
 
 class SettingsDialog(QDialog):
     def __init__(self, parent):
@@ -265,7 +323,12 @@ class SettingsDialog(QDialog):
                             self.lblSshPath,
                             self.lblSshCipher)
 
-        self.wdgSshProxy = self._create_widget_ssh_proxy()
+        self.wdgSshProxy = SshProxyWidget(
+            self,
+            self.config.sshProxyHost(),
+            self.config.sshProxyPort(),
+            self.config.sshProxyUser()
+        )
         vlayout.addWidget(self.wdgSshProxy)
 
         # encfs
@@ -1134,37 +1197,6 @@ class SettingsDialog(QDialog):
 
         self.finished.connect(self.cleanup)
 
-    def _create_widget_ssh_proxy(self):
-        """
-        Dev note by buhtz (2024-04): Just a quick n dirty solution until the
-        re-design and re-factoring of the whole dialog.
-        """
-        widget = QWidget(self)
-        vlayout = QVBoxLayout(widget)
-        # zero margins
-        vlayout.setContentsMargins(0, 0, 0, 0)
-
-        label = QLabel(_('SSH Proxy (optional)'), widget)
-        label.setWordWrap(True)
-        vlayout.addWidget(label)
-
-        hlayout = QHBoxLayout()
-        vlayout.addLayout(hlayout)
-
-        hlayout.addWidget(QLabel(_('Host:'), widget))
-        self.txtSshProxyHost = QLineEdit(widget)
-        hlayout.addWidget(self.txtSshProxyHost)
-
-        hlayout.addWidget(QLabel(_('Port:'), widget))
-        self.txtSshProxyPort = QLineEdit(widget)
-        hlayout.addWidget(self.txtSshProxyPort)
-
-        hlayout.addWidget(QLabel(_('User:'), widget))
-        self.txtSshProxyUser = QLineEdit(widget)
-        hlayout.addWidget(self.txtSshProxyUser)
-
-        return widget
-
     def addProfile(self):
         ret_val = QInputDialog.getText(self, _('New profile'), str())
         if not ret_val[1]:
@@ -1335,11 +1367,6 @@ class SettingsDialog(QDialog):
         self.txtSshHost.setText(self.config.sshHost())
         self.txtSshPort.setText(str(self.config.sshPort()))
         self.txtSshUser.setText(self.config.sshUser())
-        self.txtSshProxyHost.setText(self.config.sshProxyHost())
-        self.txtSshProxyPort.setText(str(self.config.sshProxyPort()))
-        self.txtSshProxyUser.setText(self.config.sshProxyUser())
-        print(f'{self.config.sshProxyHost()=}')
-        self.wdgSshProxy.setEnabled(self.config.sshProxyHost() != '')
         self.txtSshPath.setText(self.config.sshSnapshotsPath())
         self.setComboValue(self.comboSshCipher,
                            self.config.sshCipher(),
@@ -1540,9 +1567,10 @@ class SettingsDialog(QDialog):
         self.config.setSshHost(self.txtSshHost.text())
         self.config.setSshPort(self.txtSshPort.text())
         self.config.setSshUser(self.txtSshUser.text())
-        self.config.setSshProxyHost(self.txtSshProxyHost.text())
-        self.config.setSshProxyPort(self.txtSshProxyPort.text())
-        self.config.setSshProxyUser(self.txtSshProxyUser.text())
+        sshproxy_vals = self.wdgSshProxy.values()
+        self.config.setSshProxyHost(sshproxy_vals['host'])
+        self.config.setSshProxyPort(sshproxy_vals['port'])
+        self.config.setSshProxyUser(sshproxy_vals['user'])
         self.config.setSshSnapshotsPath(self.txtSshPath.text())
         self.config.setSshCipher(
             self.comboSshCipher.itemData(self.comboSshCipher.currentIndex()))
