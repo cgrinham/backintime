@@ -668,25 +668,26 @@ class Config(configfile.ConfigFileWithProfiles):
     def setSshPrivateKeyFile(self, value, profile_id = None):
         self.setProfileStrValue('snapshots.ssh.private_key_file', value, profile_id)
 
-    def sshProxyHost(self, profile_id = None):
+    def sshProxyHost(self, profile_id=None):
         #?Proxy host used to connect to remote host.;;IP or domain address
         return self.profileStrValue('snapshots.ssh.proxy_host', '', profile_id)
 
-    def setSshProxyHost(self, value, profile_id = None):
+    def setSshProxyHost(self, value, profile_id=None):
         self.setProfileStrValue('snapshots.ssh.proxy_host', value, profile_id)
 
-    def sshProxyPort(self, profile_id = None):
+    def sshProxyPort(self, profile_id=None):
         #?Proxy host port used to connect to remote host.;0-65535
-        return self.profileIntValue('snapshots.ssh.proxy_host_port', 22, profile_id)
+        return self.profileIntValue(
+            'snapshots.ssh.proxy_host_port', '22', profile_id)
 
     def setSshProxyPort(self, value, profile_id = None):
         self.setProfileIntValue('snapshots.ssh.proxy_host_port', value, profile_id)
 
-    def sshProxyUser(self, profile_id = None):
+    def sshProxyUser(self, profile_id=None):
         #?Remote SSH user;;local users name
         return self.profileStrValue('snapshots.ssh.proxy_user', self.user(), profile_id)
 
-    def setSshProxyUser(self, value, profile_id = None):
+    def setSshProxyUser(self, value, profile_id=None):
         self.setProfileStrValue('snapshots.ssh.proxy_user', value, profile_id)
 
     def sshMaxArgLength(self, profile_id = None):

@@ -21,6 +21,7 @@ import os
 import datetime
 import copy
 import re
+import getpass
 import textwrap
 
 from PyQt6.QtGui import (QIcon,
@@ -75,6 +76,7 @@ from exceptions import MountException, NoPubKeyLogin, KnownHost
 # That value is used to wrap tooltip strings (inserting newline characters).
 _TOOLTIP_WRAP_LENGTH = 72
 
+
 class SshProxyWidget(QWidget):
     """Used in SSH snapshot profiles on the General tab.
 
@@ -92,9 +94,9 @@ class SshProxyWidget(QWidget):
         # zero margins
         vlayout.setContentsMargins(0, 0, 0, 0)
 
-        label = QLabel(_('SSH Proxy (optional)'), self)
-        label.setWordWrap(True)
-        vlayout.addWidget(label)
+        checkbox = QCheckBox(_('SSH Proxy (optional)'), self)
+        vlayout.addWidget(checkbox)
+        checkbox.stateChanged.connect(self._slot_checkbox_changed)
 
         hlayout = QHBoxLayout()
         vlayout.addLayout(hlayout)
@@ -114,18 +116,27 @@ class SshProxyWidget(QWidget):
         if host == '':
             self._disable()
 
+    def _slot_checkbox_changed(self, state):
+        if Qt.CheckState(state) == Qt.CheckState.Checked:
+            self._enable()
+            self._set_default()
+        else:
+            self._disable()
+
+    def _set_default(self):
+        self.host_edit.setText('')
+        self.port_edit.setText('22')
+        self.user_edit.setText(getpass.getuser())
+
     def _disable(self):
         self._enable(False)
 
     def _enable(self, enable=True):
-        lay = self.layout()
-        print(f'{lay=}')
-        print(f'{lay.count()=}')
-        pass
-
-        self.host_edit.setEnabled(enable)
-        self.port_edit.setEnabled(enable)
-        self.user_edit.setEnabled(enable)
+        # QEdit and QLabel's
+        lay = self.layout().itemAt(1)
+        for idx in range(lay.count()):
+            print(lay.itemAt(idx).widget())
+            lay.itemAt(idx).widget().setEnabled(enable)
 
     def values(self):
         return {
@@ -133,6 +144,7 @@ class SshProxyWidget(QWidget):
             'port': self.port_edit.text(),
             'user': self.user_edit.text(),
         }
+
 
 class SettingsDialog(QDialog):
     def __init__(self, parent):
