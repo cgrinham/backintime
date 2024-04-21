@@ -119,9 +119,9 @@ class SshProxyWidget(QWidget):
     def _slot_checkbox_changed(self, state):
         if Qt.CheckState(state) == Qt.CheckState.Checked:
             self._enable()
-            self._set_default()
         else:
             self._disable()
+            self._set_default()
 
     def _set_default(self):
         self.host_edit.setText('')
