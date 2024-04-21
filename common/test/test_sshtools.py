@@ -441,7 +441,7 @@ class SSHCopyID(unittest.TestCase):
         )
         self.assertEqual(sut[4], custom_port)
 
-    def test_ssh_copy_id_command_with_proxy(self):
+    def test_proxy(self):
         """Used proxy"""
         proxy_user = 'non_existing_proxy_user'
         proxy_host = 'non_existing_proxy_host'
