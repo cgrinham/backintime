@@ -121,7 +121,6 @@ class SshProxyWidget(QWidget):
             self._enable()
         else:
             self._disable()
-            self._set_default()
 
     def _set_default(self):
         self.host_edit.setText('')
@@ -129,6 +128,7 @@ class SshProxyWidget(QWidget):
         self.user_edit.setText(getpass.getuser())
 
     def _disable(self):
+        self._set_default()
         self._enable(False)
 
     def _enable(self, enable=True):
