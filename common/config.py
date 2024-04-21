@@ -735,16 +735,16 @@ class Config(configfile.ConfigFileWithProfiles):
         return args
 
     def sshCommand(self,
-                   cmd = None,
-                   custom_args = None,
-                   port = True,
-                   cipher = True,
-                   user_host = True,
-                   ionice = True,
-                   nice = True,
-                   quote = False,
-                   prefix = True,
-                   profile_id = None):
+                   cmd=None,
+                   custom_args=None,
+                   port=True,
+                   cipher=True,
+                   user_host=True,
+                   ionice=True,
+                   nice=True,
+                   quote=False,
+                   prefix=True,
+                   profile_id=None):
         """
         Return SSH command with all arguments.
 
@@ -763,27 +763,35 @@ class Config(configfile.ConfigFileWithProfiles):
         Returns:
             list:               ssh command with chosen arguments
         """
+        # Refactor: Use of assert is discouraged in productive code.
+        # Raise Exceptions instead.
         assert cmd is None or isinstance(cmd, list), "cmd '{}' is not list instance".format(cmd)
         assert custom_args is None or isinstance(custom_args, list), "custom_args '{}' is not list instance".format(custom_args)
-        ssh  = ['ssh']
+
+        ssh = ['ssh']
         ssh += self.sshDefaultArgs(profile_id)
 
+        # Proxy (aka Jump host)
         if self.sshProxyHost(profile_id):
             ssh += ['-J', '{}@{}:{}'.format(
                 self.sshProxyUser(profile_id),
                 self.sshProxyHost(profile_id),
                 self.sshProxyPort(profile_id)
             )]
+
         # remote port
         if port:
             ssh += ['-p', str(self.sshPort(profile_id))]
+
         # cipher used to transfer data
         c = self.sshCipher(profile_id)
         if cipher and c != 'default':
-            ssh += ['-o', 'Ciphers={}'.format(c)]
+            ssh += ['-o', f'Ciphers={c}']
+
         # custom arguments
         if custom_args:
             ssh += custom_args
+
         # user@host
         if user_host:
             ssh.append('{}@{}'.format(self.sshUser(profile_id),
@@ -791,27 +799,32 @@ class Config(configfile.ConfigFileWithProfiles):
         # quote the command running on remote host
         if quote and cmd:
             ssh.append("'")
+
         # run 'ionice' on remote host
         if ionice and self.ioniceOnRemote(profile_id) and cmd:
             ssh += ['ionice', '-c2', '-n7']
+
         # run 'nice' on remote host
         if nice and self.niceOnRemote(profile_id) and cmd:
             ssh += ['nice', '-n19']
+
         # run prefix on remote host
         if prefix and cmd and self.sshPrefixEnabled(profile_id):
-            ssh += self.sshPrefixCmd(profile_id, cmd_type = list)
+            ssh += self.sshPrefixCmd(profile_id, cmd_type=type(cmd))
+
         # add the command
         if cmd:
             ssh += cmd
+
         # close quote
         if quote and cmd:
             ssh.append("'")
 
-        logger.debug('SSH command: %s' % ' '.join(ssh), self)
+        logger.debug(f'SSH command: {ssh}', self)
 
         return ssh
 
-    #ENCFS
+    # EncFS
     def localEncfsPath(self, profile_id = None):
         #?Where to save snapshots in mode 'local_encfs'.;absolute path
         return self.profileStrValue('snapshots.local_encfs.path', '', profile_id)
@@ -1357,17 +1370,25 @@ class Config(configfile.ConfigFileWithProfiles):
         self.setProfileBoolValue('snapshots.ssh.prefix.enabled', enabled, profile_id)
         self.setProfileStrValue('snapshots.ssh.prefix.value', value, profile_id)
 
-    def sshPrefixCmd(self, profile_id = None, cmd_type = str):
+    def sshPrefixCmd(self, profile_id=None, cmd_type=str):
+        """Return the config value of sshPrefix if enabled.
+
+        Dev note by buhtz (2024-04): Good opportunity to refactor. To much
+        implicit behavior in it.
+        """
         if cmd_type == list:
             if self.sshPrefixEnabled(profile_id):
                 return shlex.split(self.sshPrefix(profile_id))
-            else:
-                return []
+
+            return []
+
         if cmd_type == str:
             if self.sshPrefixEnabled(profile_id):
                 return self.sshPrefix(profile_id).strip() + ' '
-            else:
-                return ''
+
+            return ''
+
+        raise TypeError(f'Unable to handle type {cmd_type}.')
 
     def continueOnErrors(self, profile_id = None):
         #?Continue on errors. This will keep incomplete snapshots rather than

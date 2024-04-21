@@ -17,6 +17,7 @@
 
 import os
 import sys
+import random
 import subprocess
 import stat
 import shutil
@@ -399,43 +400,60 @@ class TestStartSshAgent(generic.SSHTestCase):
             self.ssh.startSshAgent()
 
 
-class SSHCopyIDTestCase(unittest.TestCase):
-
-    def test_ssh_copy_id_command_default_port(self):
+class SSHCopyID(unittest.TestCase):
+    def test_complete_command(self):
+        """Complete generated command"""
         command = sshtools.sshCopyIdCommand(
             generic.PRIV_KEY_FILE,
             'user',
             'non_existing_host',
-        )
-        self.assertEqual(
-            command,
-            ['ssh-copy-id', '-i', generic.PRIV_KEY_FILE, '-p', '22', 'user@non_existing_host']
-        )
-
-    def test_ssh_copy_id_command_custom_port(self):
-        command = sshtools.sshCopyIdCommand(
-            generic.PRIV_KEY_FILE,
-            'user',
-            'non_existing_host',
-            port='23'
-        )
-        self.assertEqual(
-            command,
-            ['ssh-copy-id', '-i', generic.PRIV_KEY_FILE, '-p', '23', 'user@non_existing_host']
-        )
-
-    def test_ssh_copy_id_command_with_proxy(self):
-        command = sshtools.sshCopyIdCommand(
-            generic.PRIV_KEY_FILE,
-            'user',
-            'non_existing_host',
-            proxy_user='non_existing_proxy_user',
-            proxy_host='non_existing_proxy_host',
-            proxy_port='24',
         )
         self.assertEqual(
             command,
             [
-                'ssh-copy-id', '-i', generic.PRIV_KEY_FILE, '-p', '22', '-o',
-                'ProxyJump=non_existing_proxy_user@non_existing_proxy_host:24', 'user@non_existing_host']
+                'ssh-copy-id',
+                '-i',
+                generic.PRIV_KEY_FILE,
+                '-p',
+                '22',
+                'user@non_existing_host'
+            ]
+        )
+
+    def test_default_port(self):
+        """Default port used"""
+        command = sshtools.sshCopyIdCommand(
+            generic.PRIV_KEY_FILE,
+            'user',
+            'non_existing_host',
+        )
+        self.assertEqual(command[4], '22')
+
+    def test_custom_port(self):
+        """Custom (random) port"""
+        custom_port = str(random.randint(23, 128))
+
+        sut = sshtools.sshCopyIdCommand(
+            generic.PRIV_KEY_FILE,
+            'user',
+            'non_existing_host',
+            port=custom_port
+        )
+        self.assertEqual(sut[4], custom_port)
+
+    def test_ssh_copy_id_command_with_proxy(self):
+        """Used proxy"""
+        proxy_user = 'non_existing_proxy_user'
+        proxy_host = 'non_existing_proxy_host'
+
+        sut = sshtools.sshCopyIdCommand(
+            generic.PRIV_KEY_FILE,
+            'user',
+            'non_existing_host',
+            proxy_user=proxy_user,
+            proxy_host=proxy_host
+        )
+
+        self.assertTrue(sut[6].startswith(
+            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host')
         )

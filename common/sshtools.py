@@ -132,6 +132,7 @@ class SSH(MountControl):
             'proxy_host', self.config.sshProxyHost(self.profile_id), **kwargs)
         self.setattrKwargs(
             'proxy_port', self.config.sshProxyPort(self.profile_id), **kwargs)
+
         self.setattrKwargs(
             'nice',
             self.config.niceOnRemote(self.profile_id), store=False, **kwargs)
@@ -211,13 +212,16 @@ class SSH(MountControl):
                      % ' '.join(sshfs),
                      self)
 
+        # SSH Proxy (aka Jump host)
         if self.proxy_host:
             sshfs.extend([
                 '-o',
-                f'ssh_command=ssh -J {self.proxy_user}@{self.proxy_host}:{self.proxy_port}'
+                'ssh_command=ssh -J '
+                f'{self.proxy_user}@{self.proxy_host}:{self.proxy_port}'
             ])
 
-        logger.debug(f"Run SSHFS command {' '.join(sshfs)}")
+        logger.debug(f'Execute SSHFS command {sshfs}.')
+
         proc = subprocess.Popen(sshfs,
                                 env=env,
                                 stdout=subprocess.DEVNULL,
@@ -229,9 +233,12 @@ class SSH(MountControl):
         if proc.returncode == 0:
             return
 
-        raise MountException("{}\n\n{}".format(
-            _("Can't mount {sshfs}").format(sshfs=" ".join(sshfs)),
-            err))
+        raise MountException(
+            "{}\n\n{}".format(
+                _("Can't mount {sshfs}").format(sshfs=" ".join(sshfs)),
+                err
+            )
+        )
 
     def preMountCheck(self, first_run=False):
         """
@@ -718,28 +725,34 @@ class SSH(MountControl):
 
             try:
                 with socket.create_connection(
-                        (self.proxy_host or self.host, self.proxy_port or self.port), 2.0) as s:
+                        (self.proxy_host or self.host,
+                         self.proxy_port or self.port),
+                        2.0) as s:
 
                     result = s.connect_ex(s.getpeername())
                     s.sendall(versionString)
 
-            except:
+            except:  # Refactor: too broad exception
                 result = -1
 
             if result == 0:
-                logger.debug('Host %s is available' % self.host, self)
+                logger.debug(f'Host {self.host} is available', self)
                 return
 
-            logger.debug('Could not ping host %s. Try again' % self.host, self)
+            logger.debug(f'Could not ping host {self.host}. Try again', self)
 
             count += 1
             sleep(0.2)
 
         if result != 0:
-            logger.debug('Failed pinging host %s' % self.host, self)
-            proxy_message = f" via proxy {self.proxy_host}" if self.proxy_host else ""
-            raise MountException(
-                f'Ping {self.host}{proxy_message} failed. Host is down or wrong address.')
+            proxy_message = f' via proxy {self.proxy_host}' \
+                if self.proxy_host else ''
+
+            logger.debug(
+                f'Failed pinging host {self.host}{proxy_message}', self)
+
+            raise MountException(f'Ping {self.host}{proxy_message} failed. '
+                                 'Host is down or wrong address.')
 
     def checkRemoteCommands(self, retry=False):
         """
@@ -1058,7 +1071,8 @@ def sshCopyIdCommand(
     cipher=None
 ):
     """
-    Generate a ssh-copy-id command to copy the given public ssh-key to a remote host.
+    Generate a ssh-copy-id command to copy the given public ssh-key to a
+    remote host.
 
     Args:
         pubkey (str):   path to the public key file
@@ -1071,12 +1085,11 @@ def sshCopyIdCommand(
         cipher (str):   cipher used for ssh
 
     Returns:
-        list:           list containing the ssh-copy-id command
+        list: The ssh-copy-id command as a list.
     """
     if not os.path.exists(pubkey):
-        logger.warning(
-            'SSH public key "{}" does not exist. Skip copy to remote host'
-            .format(pubkey))
+        logger.warning(f'SSH public key "{pubkey}" does not exist. '
+                       'Skip copy to remote host')
 
         return False
 
@@ -1088,9 +1101,10 @@ def sshCopyIdCommand(
     if proxy_host:
         cmd.extend(['-o', f'ProxyJump={proxy_user}@{proxy_host}:{proxy_port}'])
 
-    cmd.append('{}@{}'.format(user, host))
+    cmd.append(f'{user}@{host}')
 
-    logger.debug('ssh-copy-id command "{}"'.format(' '.join(cmd)))
+    logger.debug(f'ssh-copy-id command {cmd}')
+
     return cmd
 
 
@@ -1151,6 +1165,7 @@ def sshCopyId(
     if proc.returncode:
         logger.error('Failed to copy ssh-key "{}" to "{}@{}": [{}] {}'
                      .format(pubkey, user, host, proc.returncode, err))
+
     else:
         logger.info('Successfully copied ssh-key "{}" to "{}@{}"'
                     .format(pubkey, user, host))
