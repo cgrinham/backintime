@@ -73,9 +73,6 @@ import sshtools
 import logger
 from exceptions import MountException, NoPubKeyLogin, KnownHost
 
-# That value is used to wrap tooltip strings (inserting newline characters).
-_TOOLTIP_WRAP_LENGTH = 72
-
 
 class SshProxyWidget(QWidget):
     """Used in SSH snapshot profiles on the General tab.
@@ -94,7 +91,7 @@ class SshProxyWidget(QWidget):
         # zero margins
         vlayout.setContentsMargins(0, 0, 0, 0)
 
-        checkbox = QCheckBox(_('SSH Proxy (optional)'), self)
+        checkbox = QCheckBox(_('SSH Proxy'), self)
         vlayout.addWidget(checkbox)
         checkbox.stateChanged.connect(self._slot_checkbox_changed)
 
@@ -116,6 +113,12 @@ class SshProxyWidget(QWidget):
         if host == '':
             self._disable()
 
+        qttools.set_wrapped_tooltip(
+            self,
+            'Connect to the target host via this proxy (also known as a jump '
+            'host). See "-J" in the "ssh" command documentation or '
+            '"ProxyJump" in "ssh_config" man page for details.')
+
     def _slot_checkbox_changed(self, state):
         if Qt.CheckState(state) == Qt.CheckState.Checked:
             self._enable()
@@ -135,7 +138,6 @@ class SshProxyWidget(QWidget):
         # QEdit and QLabel's
         lay = self.layout().itemAt(1)
         for idx in range(lay.count()):
-            print(lay.itemAt(idx).widget())
             lay.itemAt(idx).widget().setEnabled(enable)
 
     def values(self):
@@ -1106,10 +1108,11 @@ class SettingsDialog(QDialog):
         # one file system option
         self.cbOneFileSystem = QCheckBox(
             _('Restrict to one file system'), self)
-        self.cbOneFileSystem.setToolTip(
-            'uses \'rsync --one-file-system\'\n'
-            'From \'man rsync\':\n'
-            + '\n'.join(textwrap.wrap(
+        qttools.set_wrapped_tooltip(
+            self.cbOneFileSystem,
+            [
+                'uses \'rsync --one-file-system\'',
+                'From \'man rsync\':',
                 'This tells rsync to avoid crossing a filesystem boundary '
                 'when recursing. This does not limit the user\'s ability '
                 'to specify items to copy from multiple filesystems, just '
@@ -1117,8 +1120,8 @@ class SettingsDialog(QDialog):
                 'that the user specified, and also the analogous recursion '
                 'on the receiving side during deletion. Also keep in mind '
                 'that rsync treats a "bind" mount to the same device as '
-                'being on the same filesystem.',
-                _TOOLTIP_WRAP_LENGTH))
+                'being on the same filesystem.'
+            ]
         )
         layout.addWidget(self.cbOneFileSystem)
 
