@@ -459,14 +459,17 @@ class SSH(MountControl):
 
         logger.debug('Check login', self)
 
+        # Custom SSH arguments
+        custom_ssh_args = [
+            '-o',
+            'PreferredAuthentications=publickey',
+            '-p', str(self.port),
+            self.user_host
+        ]
+
+        # Create SSH command
         ssh = self.config.sshCommand(cmd=['exit'],
-                                     custom_args=[
-                                          '-o',
-                                          'PreferredAuthentications=publickey',
-                                          '-p',
-                                          str(self.port),
-                                          self.user_host
-                                     ],
+                                     custom_args=custom_ssh_args,
                                      port=False,
                                      user_host=False,
                                      nice=False,
@@ -716,7 +719,10 @@ class SSH(MountControl):
         if not self.config.sshCheckPingHost(self.profile_id):
             return
 
-        logger.debug('Check ping host', self)
+        ping_host = self.proxy_host or self.host
+        ping_port = self.proxy_port or self.port
+
+        logger.debug(f'Check ping host "{ping_host}:{ping_port}"', self)
         versionString = 'SSH-2.0-backintime_{}\r\n'.format(
             version.__version__).encode()
 
@@ -726,9 +732,7 @@ class SSH(MountControl):
 
             try:
                 with socket.create_connection(
-                        (self.proxy_host or self.host,
-                         self.proxy_port or self.port),
-                        2.0) as s:
+                        (ping_host, ping_port), 2.0) as s:
 
                     result = s.connect_ex(s.getpeername())
                     s.sendall(versionString)
@@ -737,23 +741,20 @@ class SSH(MountControl):
                 result = -1
 
             if result == 0:
-                logger.debug(f'Host {self.host} is available', self)
+                logger.debug(
+                    f'Host "{ping_host}:{ping_port}" is available', self)
                 return
-
-            logger.debug(f'Could not ping host {self.host}. Try again', self)
 
             count += 1
             sleep(0.2)
 
         if result != 0:
-            proxy_message = f' via proxy {self.proxy_host}' \
+            proxy_msg = f' via proxy "{ping_host}:{ping_port}"' \
                 if self.proxy_host else ''
-
-            logger.debug(
-                f'Failed pinging host {self.host}{proxy_message}', self)
-
-            raise MountException(f'Ping {self.host}{proxy_message} failed. '
-                                 'Host is down or wrong address.')
+            msg = f'Ping {self.host}{proxy_msg} failed. ' \
+                  'Host is down or wrong address.'
+            logger.debug(msg, self)
+            raise MountException(msg)
 
     def checkRemoteCommands(self, retry=False):
         """
@@ -1065,10 +1066,10 @@ def sshCopyIdCommand(
     pubkey,
     user,
     host,
-    port=None,
+    port='22',
     proxy_user=None,
     proxy_host=None,
-    proxy_port=None,
+    proxy_port='22',
     cipher=None
 ):
     """
@@ -1096,12 +1097,13 @@ def sshCopyIdCommand(
         logger.error(msg)
         raise FileNotFoundError(msg)
 
-    # public key file
-    cmd = ['ssh-copy-id', '-i', pubkey]
-
-    # port
-    if port:
-        cmd.extend(['-p', str(port)])
+    cmd = [
+        'ssh-copy-id',
+        # key file
+        '-i', pubkey,
+        # port
+        '-p', str(port),
+    ]
 
     # cipher
     if cipher and cipher != 'default':
@@ -1109,10 +1111,7 @@ def sshCopyIdCommand(
 
     # proxy
     if proxy_host:
-        proxy_jump = f'{proxy_user}@{proxy_host}'
-        if proxy_port:
-            proxy_jump = f'{proxy_jump}:{proxy_port}'
-
+        proxy_jump = f'{proxy_user}@{proxy_host}:{proxy_port}'
         cmd.extend(['-o', f'ProxyJump={proxy_jump}'])
 
     cmd.append(f'{user}@{host}')

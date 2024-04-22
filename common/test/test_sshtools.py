@@ -415,20 +415,22 @@ class SSHCopyID(unittest.TestCase):
                 'ssh-copy-id',
                 '-i',
                 generic.PRIV_KEY_FILE,
+                '-p',
+                '22',
                 'user@non_existing_host'
             ]
         )
 
     def test_default_port(self):
-        """Default port decided by ssh itself"""
+        """Default port"""
         sut = sshtools.sshCopyIdCommand(
             generic.PRIV_KEY_FILE,
             'user',
             'non_existing_host',
         )
-        self.assertEqual(len(sut), 4)
+        self.assertEqual(len(sut), 6, sut)
         # no port explicit specified
-        self.assertNotIn('-p', sut)
+        self.assertEqual(sut[4], '22')
 
     def test_custom_port(self):
         """Custom (random) port"""
@@ -457,7 +459,7 @@ class SSHCopyID(unittest.TestCase):
         )
 
         self.assertIn(
-            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host',
+            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host:22',
             sut)
 
     def test_proxy_with_custom_port(self):
