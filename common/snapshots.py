@@ -3034,8 +3034,7 @@ class RootSnapshot(GenericNonSnapshot):
 
 def iterSnapshots(cfg, includeNewSnapshot = False):
     """
-    Iterate over snapshots in current snapshot path. Use this in a 'for' loop
-    for faster processing than list object
+    A generator to iterate over snapshots in current snapshot path.
 
     Args:
         cfg (config.Config):        current config
@@ -3046,21 +3045,33 @@ def iterSnapshots(cfg, includeNewSnapshot = False):
         SID:                        snapshot IDs
     """
     path = cfg.snapshotsFullPath()
+
     if not os.path.exists(path):
         return None
+
     for item in os.listdir(path):
+
         if item == NewSnapshot.NEWSNAPSHOT:
             newSid = NewSnapshot(cfg)
+
             if newSid.exists() and includeNewSnapshot:
                 yield newSid
+
             continue
+
         try:
             sid = SID(item, cfg)
+
             if sid.exists():
                 yield sid
+
+        # REFACTOR!
+        # LastSnapshotSymlink is an exception instance and could be catched
+        # explicit. But not sure about its purpose.
         except Exception as e:
             if not isinstance(e, LastSnapshotSymlink):
-                logger.debug("'{}' is not a snapshot ID: {}".format(item, str(e)))
+                logger.debug(
+                    "'{}' is not a snapshot ID: {}".format(item, str(e)))
 
 
 def listSnapshots(cfg, includeNewSnapshot = False, reverse = True):
