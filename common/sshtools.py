@@ -1065,10 +1065,10 @@ def sshCopyIdCommand(
     pubkey,
     user,
     host,
-    port='22',
+    port=None,
     proxy_user=None,
     proxy_host=None,
-    proxy_port='22',
+    proxy_port=None,
     cipher=None
 ):
     """
@@ -1087,20 +1087,33 @@ def sshCopyIdCommand(
 
     Returns:
         list: The ssh-copy-id command as a list.
+
+    Raises:
+        FileNotFoundError: If public key file not exist.
     """
     if not Path(pubkey).exists():
-        logger.warning(f'SSH public key "{pubkey}" does not exist. '
-                       'Skip copy to remote host')
+        msg = f'SSH public key "{pubkey}" does not exist.'
+        logger.error(msg)
+        raise FileNotFoundError(msg)
 
-        return False
+    # public key file
+    cmd = ['ssh-copy-id', '-i', pubkey]
 
-    cmd = ['ssh-copy-id', '-i', pubkey, '-p', str(port)]
+    # port
+    if port:
+        cmd.extend(['-p', str(port)])
 
+    # cipher
     if cipher and cipher != 'default':
         cmd.extend(['-o', 'Ciphers={}'.format(cipher)])
 
+    # proxy
     if proxy_host:
-        cmd.extend(['-o', f'ProxyJump={proxy_user}@{proxy_host}:{proxy_port}'])
+        proxy_jump = f'{proxy_user}@{proxy_host}'
+        if proxy_port:
+            proxy_jump = f'{proxy_jump}:{proxy_port}'
+
+        cmd.extend(['-o', f'ProxyJump={proxy_jump}'])
 
     cmd.append(f'{user}@{host}')
 

@@ -244,7 +244,7 @@ class TestSshKey(generic.TestCaseCfg):
             self.assertFalse(sshtools.sshKeyGen(secKey))
 
     @unittest.skipIf(getpass.getuser() != 'germar', 'Password login does not work on Travis-ci.')
-    @unittest.skipIf(not generic.LOCAL_SSH, 'Skip as this test requires a local ssh server, public and private keys installed')
+    @unittest.skipIf(not generic.LOCAL_SSH, SKIP_MESSAGE_SSH)
     def test_sshCopyId(self):
         with TemporaryDirectory() as tmp:
             secKey = os.path.join(tmp, 'key')
@@ -415,20 +415,20 @@ class SSHCopyID(unittest.TestCase):
                 'ssh-copy-id',
                 '-i',
                 generic.PRIV_KEY_FILE,
-                '-p',
-                '22',
                 'user@non_existing_host'
             ]
         )
 
     def test_default_port(self):
-        """Default port used"""
-        command = sshtools.sshCopyIdCommand(
+        """Default port decided by ssh itself"""
+        sut = sshtools.sshCopyIdCommand(
             generic.PRIV_KEY_FILE,
             'user',
             'non_existing_host',
         )
-        self.assertEqual(command[4], '22')
+        self.assertEqual(len(sut), 4)
+        # no port explicit specified
+        self.assertNotIn('-p', sut)
 
     def test_custom_port(self):
         """Custom (random) port"""
@@ -440,6 +440,7 @@ class SSHCopyID(unittest.TestCase):
             'non_existing_host',
             port=custom_port
         )
+        self.assertEqual(sut[3], '-p')
         self.assertEqual(sut[4], custom_port)
 
     def test_proxy_with_default_port(self):
@@ -455,8 +456,9 @@ class SSHCopyID(unittest.TestCase):
             proxy_host=proxy_host
         )
 
-        self.assertTrue(sut[6].startswith(
-            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host:22'))
+        self.assertIn(
+            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host',
+            sut)
 
     def test_proxy_with_custom_port(self):
         """Used proxy and custom port"""
@@ -473,6 +475,7 @@ class SSHCopyID(unittest.TestCase):
             proxy_port=proxy_port
         )
 
-        self.assertTrue(sut[6].startswith(
-            'ProxyJump=non_existing_proxy_user@'
-            f'non_existing_proxy_host:{proxy_port}'))
+        self.assertIn(
+            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host'
+            f':{proxy_port}',
+            sut,)
