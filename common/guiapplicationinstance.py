@@ -21,43 +21,44 @@ import os
 import logger
 from applicationinstance import ApplicationInstance
 
+
 class GUIApplicationInstance(ApplicationInstance):
     """
     class used to handle one application instance mechanism
     """
-    def __init__(self, baseControlFile, raiseCmd = ''):
+    def __init__(self, baseControlFile, raiseCmd=''):
         """
         specify the base for control files
         """
         self.raiseFile = baseControlFile + '.raise'
         self.raiseCmd = raiseCmd
 
-        super(GUIApplicationInstance, self).__init__(baseControlFile + '.pid', False, False)
+        super(GUIApplicationInstance, self).__init__(f"{baseControlFile}.pid", False, False)
 
-        #remove raiseFile is already exists
+        # remove raiseFile is already exists
         if os.path.exists(self.raiseFile):
             os.remove(self.raiseFile)
 
-        self.check(raiseCmd)
+        self.check_is_single_instance(autoExit=raiseCmd)
         self.startApplication()
 
     def check(self, raiseCmd):
         """
         check if the current application is already running
         """
-        ret = super(GUIApplicationInstance, self).check(False)
-        if not ret:
-            print("The application is already running! (pid: %s)" % self.pid)
-            #notify raise
-            try:
-                with open(self.raiseFile, 'wt') as f:
-                    f.write(raiseCmd)
-            except OSError as e:
-                logger.error('Failed to write raise file %s: [%s] %s' %(e.filename, e.errno, e.strerror))
+        is_single_instance = super(GUIApplicationInstance, self).check_is_single_instance(autoExit=False)
+        if is_single_instance:
+            return is_single_instance
 
-            exit(0) #exit raise an exception so don't put it in a try/except block
-        else:
-            return ret
+        print(f"The application is already running! (pid: {self.pid})")  # CG: why aren't we using logger here?
+        # notify raise
+        try:
+            with open(self.raiseFile, 'wt') as f:
+                f.write(raiseCmd)
+        except OSError as e:
+            logger.error(f'Failed to write raise file {e.filename}: [{e.errno}] {e.strerror}')
+
+        exit(0)  # exit raise an exception so don't put it in a try/except block
 
     def raiseCommand(self):
         """

@@ -44,48 +44,8 @@ from applicationinstance import ApplicationInstance
 from exceptions import MountException, LastSnapshotSymlink
 
 
-class Snapshots:
-    """
-    Collection of take-snapshot and restore commands.
-
-    BUHTZ 2022-10-09: In my understanding this is the representation of a
-    snapshot in the "application layer". This seems to be the difference to
-    the class `SID` which represents a snapshot in the "data layer".
-
-    BUHTZ 2024-02-23: Not sure but it seems to be one concret snapshot and
-    not a collection of snapshots. In this case the class name is missleading
-    because it is in plural form.
-
-    Args:
-        cfg (config.Config): current config
-    """
-    SNAPSHOT_VERSION = 3
-    GLOBAL_FLOCK = '/tmp/backintime.lock'
-
-    def __init__(self, cfg = None):
-        self.config = cfg
-        if self.config is None:
-            self.config = config.Config()
-        self.snapshotLog = snapshotlog.SnapshotLog(self.config)
-
-        self.clearIdCache()
-        self.clearNameCache()
-
-        #rsync --info=progress2 output
-        #search for:     517.38K  26%   14.46MB/s    0:02:36
-        #or:             497.84M   4% -449.39kB/s   ??:??:??
-        #but filter out: 517.38K  26%   14.46MB/s    0:00:53 (xfr#53, to-chk=169/452)
-        #                because this shows current run time
-        self.reRsyncProgress = re.compile(r'.*?'                            #trash at start
-                                          r'(\d*[,\.]?\d+[KkMGT]?)\s+'      #bytes sent
-                                          r'(\d*)%\s+'                      #percent done
-                                          r'(-?\d*[,\.]?\d*[KkMGT]?B/s)\s+' #speed
-                                          r'([\d\?]+:[\d\?]{2}:[\d\?]{2})'  #estimated time of arrival
-                                          r'(.*$)')                         #trash at the end
-
-        self.lastBusyCheck = datetime.datetime(1, 1, 1)
-        self.flock = None
-        self.restorePermissionFailed = False
+class SnapshotMessage:
+    """Class to handle snapshot messages. """
 
     # TODO: make own class for takeSnapshotMessage
     def clearTakeSnapshotMessage(self):
@@ -195,6 +155,51 @@ class Snapshots:
 
         except Exception as exc:
             logger.debug(f'Failed to send message to plugins: {str(exc)}', self)
+
+
+
+class Snapshots:
+    """
+    Collection of take-snapshot and restore commands.
+
+    BUHTZ 2022-10-09: In my understanding this is the representation of a
+    snapshot in the "application layer". This seems to be the difference to
+    the class `SID` which represents a snapshot in the "data layer".
+
+    BUHTZ 2024-02-23: Not sure but it seems to be one concret snapshot and
+    not a collection of snapshots. In this case the class name is missleading
+    because it is in plural form.
+
+    Args:
+        cfg (config.Config): current config
+    """
+    SNAPSHOT_VERSION = 3
+    GLOBAL_FLOCK = '/tmp/backintime.lock'
+
+    def __init__(self, cfg = None):
+        self.config = cfg
+        if self.config is None:
+            self.config = config.Config()
+        self.snapshotLog = snapshotlog.SnapshotLog(self.config)
+
+        self.clearIdCache()
+        self.clearNameCache()
+
+        #rsync --info=progress2 output
+        #search for:     517.38K  26%   14.46MB/s    0:02:36
+        #or:             497.84M   4% -449.39kB/s   ??:??:??
+        #but filter out: 517.38K  26%   14.46MB/s    0:00:53 (xfr#53, to-chk=169/452)
+        #                because this shows current run time
+        self.reRsyncProgress = re.compile(r'.*?'                            #trash at start
+                                          r'(\d*[,\.]?\d+[KkMGT]?)\s+'      #bytes sent
+                                          r'(\d*)%\s+'                      #percent done
+                                          r'(-?\d*[,\.]?\d*[KkMGT]?B/s)\s+' #speed
+                                          r'([\d\?]+:[\d\?]{2}:[\d\?]{2})'  #estimated time of arrival
+                                          r'(.*$)')                         #trash at the end
+
+        self.lastBusyCheck = datetime.datetime(1, 1, 1)
+        self.flock = None
+        self.restorePermissionFailed = False
 
     def busy(self):
         instance = ApplicationInstance(self.config.takeSnapshotInstanceFile(), False)
@@ -473,9 +478,10 @@ class Snapshots:
         instance = ApplicationInstance(
             pidFile=self.config.restoreInstanceFile(),
             autoExit=False,
-            flock=True)
+            flock=True
+        )
 
-        if instance.check():
+        if instance.check_is_single_instance():
             instance.startApplication()
         else:
             logger.warning('Restore is already running', self)
@@ -487,9 +493,8 @@ class Snapshots:
         if not isinstance(paths, (list, tuple)):
             paths = (paths,)
 
-        logger.info("Restore: %s to: %s"
-                    %(', '.join(paths), restore_to),
-                    self)
+        logger.info(
+            "Restore: %s to: %s" % (', '.join(paths), restore_to), self)
 
         info = sid.info
 
@@ -758,7 +763,7 @@ class Snapshots:
                 False
             )
 
-            if not instance.check():
+            if not instance.check_is_single_instance():
                 logger.warning(
                     'A backup is already running. The pid of the already '
                     f'running backup is in file {instance.pidFile}. Maybe '
@@ -767,7 +772,7 @@ class Snapshots:
                 # a backup is already running
                 self.config.PLUGIN_MANAGER.error(2)
 
-            elif not restore_instance.check():
+            elif not restore_instance.check_is_single_instance():
                 logger.warning(
                     'Restore is still running. Stop backup until restore is '
                     'done. The pid of the already running restore is in '

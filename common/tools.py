@@ -2712,7 +2712,7 @@ class Daemon:
         Start the daemon
         """
         # Check for a pidfile to see if the daemon already runs
-        if self.pidfile and not self.appInstance.check():
+        if self.pidfile and not self.appInstance.check_is_single_instance():
             message = "pidfile %s already exists. Daemon already running?\n"
             logger.error(message % self.pidfile, self)
             sys.exit(1)
@@ -2791,7 +2791,7 @@ class Daemon:
         if not self.pidfile:
             logger.debug("Unattended daemon can't be checked. No PID file", self)
             return
-        return not self.appInstance.check()
+        return not self.appInstance.check_is_single_instance()
 
     def run(self):
         """

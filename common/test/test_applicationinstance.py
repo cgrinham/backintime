@@ -122,7 +122,7 @@ class TestApplicationInstance(generic.TestCase):
             file_with_pid.write(procname)
 
         # Execute test
-        self.assertFalse(self.app_instance.check())
+        self.assertFalse(self.app_instance.check_is_single_instance())
         self.assertTrue(self.app_instance.busy())
 
     def test_existing_process_with_correct_proc_cmdline(self):
@@ -142,10 +142,10 @@ class TestApplicationInstance(generic.TestCase):
             file_with_pid.write(procname)
 
         # Execute test
-        self.assertFalse(self.app_instance.check())
+        self.assertFalse(self.app_instance.check_is_single_instance())
 
     def test_no_pid_file(self):
-        self.assertTrue(self.app_instance.check())
+        self.assertTrue(self.app_instance.check_is_single_instance())
 
     def test_existing_process_with_wrong_procname(self):
         """
@@ -161,7 +161,7 @@ class TestApplicationInstance(generic.TestCase):
             file_with_pid.write(procname + "DELETE")
 
         # Execute test
-        self.assertTrue(self.app_instance.check())
+        self.assertTrue(self.app_instance.check_is_single_instance())
 
     def test_existing_process_with_wrong_pid(self):
         """
@@ -176,7 +176,7 @@ class TestApplicationInstance(generic.TestCase):
             file_with_pid.write(procname)
 
         # Execute test
-        self.assertTrue(self.app_instance.check())
+        self.assertTrue(self.app_instance.check_is_single_instance())
 
     def test_killing_existing_process(self):
         """
@@ -191,12 +191,12 @@ class TestApplicationInstance(generic.TestCase):
             file_with_pid.write(str(pid) + "\n")
             file_with_pid.write(procname)
 
-        self.assertFalse(self.app_instance.check())
+        self.assertFalse(self.app_instance.check_is_single_instance())
 
         self._killProcess()
 
         # Execute test
-        self.assertTrue(self.app_instance.check())
+        self.assertTrue(self.app_instance.check_is_single_instance())
 
     def test_non_existing_process(self):
         """ Test the check function with a non existing process """
@@ -207,12 +207,12 @@ class TestApplicationInstance(generic.TestCase):
             file_with_pid.write("FAKE_PROCNAME")
 
         # Execute test
-        self.assertTrue(self.app_instance.check())
+        self.assertTrue(self.app_instance.check_is_single_instance())
 
     def test_leftover_empty_lockfile(self):
         with open(self.file_name, 'wt')as f:
             pass
-        self.assertTrue(self.app_instance.check())
+        self.assertTrue(self.app_instance.check_is_single_instance())
 
     def write_after_flock(self, pid_file):
         inst = ApplicationInstance(os.path.abspath(pid_file),

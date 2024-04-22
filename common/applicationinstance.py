@@ -52,14 +52,13 @@ class ApplicationInstance:
             self.flockExclusiv()
 
         if autoExit:
-            if self.check(True):
+            if self.check_is_single_instance(autoExit=True):
                 self.startApplication()
 
     def __del__(self):
         self.flockUnlock()
 
-    # TODO Rename to is_single_instance() to make the purpose more obvious
-    def check(self, autoExit=False):
+    def check_is_single_instance(self, autoExit=False):
         """
         Check if the current application is already running
 
@@ -77,7 +76,7 @@ class ApplicationInstance:
         self.pid, self.procname = self.readPidFile()
 
         # check if the process (PID) that created the pid file still exists
-        if 0 == self.pid:
+        if self.pid == 0:
             return True
 
         if not tools.processAlive(self.pid):
@@ -85,14 +84,16 @@ class ApplicationInstance:
 
         # check if the process has the same procname
         # check cmdline for backwards compatibility
-        if self.procname and                                    \
-           self.procname != tools.processName(self.pid) and    \
-           self.procname != tools.processCmdline(self.pid):
+        if (
+            self.procname
+            and self.procname != tools.processName(self.pid)
+            and self.procname != tools.processCmdline(self.pid)
+        ):
             return True
 
         if autoExit:
             # exit the application
-            print("The application is already running !")
+            print("The application is already running !")  # CG: why aren't we using logger here?
 
             # exit raise an exception so don't put it in a try/except block
             exit(0)
@@ -106,7 +107,7 @@ class ApplicationInstance:
         Returns:
             bool:       ``True`` if an other instance is currently running.
         """
-        return not self.check()
+        return not self.check_is_single_instance()
 
     def startApplication(self):
         """
