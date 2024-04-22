@@ -23,6 +23,7 @@ import socket
 import re
 import atexit
 import signal
+from pathlib import Path
 from time import sleep
 import logger
 import tools
@@ -1067,7 +1068,7 @@ def sshCopyIdCommand(
     port='22',
     proxy_user=None,
     proxy_host=None,
-    proxy_port=None,
+    proxy_port='22',
     cipher=None
 ):
     """
@@ -1087,7 +1088,7 @@ def sshCopyIdCommand(
     Returns:
         list: The ssh-copy-id command as a list.
     """
-    if not os.path.exists(pubkey):
+    if not Path(pubkey).exists():
         logger.warning(f'SSH public key "{pubkey}" does not exist. '
                        'Skip copy to remote host')
 

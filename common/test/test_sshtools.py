@@ -35,8 +35,10 @@ import sshtools
 import tools
 from exceptions import MountException
 
+SKIP_MESSAGE_SSH = 'Skip as this test requires a local ssh server, public ' \
+                   'and private keys installed'
 
-@unittest.skipIf(not generic.LOCAL_SSH, 'Skip as this test requires a local ssh server, public and private keys installed')
+@unittest.skipIf(not generic.LOCAL_SSH, SKIP_MESSAGE_SSH)
 class TestSSH(generic.SSHTestCase):
     # running this test requires that user has public / private key pair created and ssh server running
 
@@ -336,7 +338,7 @@ class TestSshKey(generic.TestCaseCfg):
                 if os.path.exists(knownHostsSic):
                     shutil.copyfile(knownHostsSic, knownHosts)
 
-@unittest.skipIf(not generic.LOCAL_SSH, 'Skip as this test requires a local ssh server, public and private keys installed')
+@unittest.skipIf(not generic.LOCAL_SSH, SKIP_MESSAGE_SSH)
 class TestStartSshAgent(generic.SSHTestCase):
     # running this test requires that user has public / private key pair created and ssh server running
     SOCK = 'SSH_AUTH_SOCK'
@@ -399,7 +401,6 @@ class TestStartSshAgent(generic.SSHTestCase):
         with self.assertRaises(MountException):
             self.ssh.startSshAgent()
 
-
 class SSHCopyID(unittest.TestCase):
     def test_complete_command(self):
         """Complete generated command"""
@@ -441,8 +442,8 @@ class SSHCopyID(unittest.TestCase):
         )
         self.assertEqual(sut[4], custom_port)
 
-    def test_proxy(self):
-        """Used proxy"""
+    def test_proxy_with_default_port(self):
+        """Used proxy and default port"""
         proxy_user = 'non_existing_proxy_user'
         proxy_host = 'non_existing_proxy_host'
 
@@ -455,5 +456,23 @@ class SSHCopyID(unittest.TestCase):
         )
 
         self.assertTrue(sut[6].startswith(
-            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host')
+            'ProxyJump=non_existing_proxy_user@non_existing_proxy_host:22'))
+
+    def test_proxy_with_custom_port(self):
+        """Used proxy and custom port"""
+        proxy_user = 'non_existing_proxy_user'
+        proxy_host = 'non_existing_proxy_host'
+        proxy_port = str(random.randint(23, 128))
+
+        sut = sshtools.sshCopyIdCommand(
+            generic.PRIV_KEY_FILE,
+            'user',
+            'non_existing_host',
+            proxy_user=proxy_user,
+            proxy_host=proxy_host,
+            proxy_port=proxy_port
         )
+
+        self.assertTrue(sut[6].startswith(
+            'ProxyJump=non_existing_proxy_user@'
+            f'non_existing_proxy_host:{proxy_port}'))
