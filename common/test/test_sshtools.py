@@ -480,4 +480,4 @@ class SSHCopyID(unittest.TestCase):
         self.assertIn(
             'ProxyJump=non_existing_proxy_user@non_existing_proxy_host'
             f':{proxy_port}',
-            sut,)
+            sut)
