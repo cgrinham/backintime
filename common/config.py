@@ -666,11 +666,13 @@ class Config(configfile.ConfigFileWithProfiles):
             'snapshots.ssh.proxy_host_port', '22', profile_id)
 
     def setSshProxyPort(self, value, profile_id = None):
-        self.setProfileIntValue('snapshots.ssh.proxy_host_port', value, profile_id)
+        self.setProfileIntValue(
+            'snapshots.ssh.proxy_host_port', value, profile_id)
 
     def sshProxyUser(self, profile_id=None):
         #?Remote SSH user;;local users name
-        return self.profileStrValue('snapshots.ssh.proxy_user', self.user(), profile_id)
+        return self.profileStrValue(
+            'snapshots.ssh.proxy_user', getpass.getuser(), profile_id)
 
     def setSshProxyUser(self, value, profile_id=None):
         self.setProfileStrValue('snapshots.ssh.proxy_user', value, profile_id)
