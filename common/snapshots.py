@@ -732,8 +732,9 @@ class Snapshots:
             self.config.PLUGIN_MANAGER.error(1)
 
         elif (not force
-                  and self.config.noSnapshotOnBattery()
-                  and tools.onBattery()):
+              and self.config.noSnapshotOnBattery()
+              and tools.onBattery()):
+
             self.setTakeSnapshotMessage(
                 0, _('Deferring backup while on battery'))
             logger.info('Deferring backup while on battery', self)
@@ -761,7 +762,7 @@ class Snapshots:
                 logger.warning(
                     'A backup is already running. The pid of the already '
                     f'running backup is in file {instance.pidFile}. Maybe '
-                    'delete it.', self )
+                    'delete it.', self)
 
                 # a backup is already running
                 self.config.PLUGIN_MANAGER.error(2)
@@ -773,7 +774,7 @@ class Snapshots:
                     f'{restore_instance.pidFile}. Maybe delete it.', self)
 
             else:
-                if (self.config.noSnapshotOnBattery ()
+                if (self.config.noSnapshotOnBattery()
                         and not tools.powerStatusAvailable()):
                     logger.warning('Backups disabled on battery but power '
                                    'status is not available', self)
@@ -793,7 +794,7 @@ class Snapshots:
 
                 # mount
                 try:
-                    hash_id = mount.Mount(cfg = self.config).mount()
+                    hash_id = mount.Mount(cfg=self.config).mount()
 
                 except MountException as ex:
                     logger.error(str(ex), self)
@@ -948,9 +949,6 @@ class Snapshots:
 
                 if not ret_error:
                     self.clearTakeSnapshotMessage()
-
-                # QUESTION - unmounting at the end of backup breaks snapshot list,
-                # why is this happening?
 
                 # unmount
                 try:
